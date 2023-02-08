@@ -23,7 +23,7 @@ func TestBroker(t *testing.T) {
 	}
 	done := make(chan bool)
 
-	sub, err := Subscribe("mq-test", func(event mq.Event) error {
+	sub, err := Subscribe("mq-test", "test23", func(event mq.Event) error {
 		m := event.Message()
 		if string(m.Body) != string(msg.Body) {
 			t.Fatalf("Unexpected msg %s, expected %s", string(m.Body), string(msg.Body))
@@ -81,7 +81,7 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 	done := make(chan bool)
 	sub1HasConsumed, sub2HasConsumed := false, false
 
-	if _, err := Subscribe("xwz", func(event mq.Event) error {
+	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
 		sub1HasConsumed = true
 		m := event.Message()
 		if m == nil {
@@ -95,11 +95,11 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 		t.Logf("sub 1 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
 		return nil
-	}, mq.Queue("test-xwz")); err != nil {
+	}); err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	if _, err := Subscribe("xwz", func(event mq.Event) error {
+	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
 		sub2HasConsumed = true
 		m := event.Message()
 		if m == nil {
@@ -113,7 +113,7 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 		t.Logf("sub 2 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
 		return nil
-	}, mq.Queue("test-xwz")); err != nil {
+	}); err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
@@ -167,7 +167,7 @@ func TestTwoPartitionMultipleConsumerWithDiffKey(t *testing.T) {
 	done := make(chan bool)
 	sub1HasConsumed, sub2HasConsumed := false, false
 
-	if _, err := Subscribe("xwz", func(event mq.Event) error {
+	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
 		sub1HasConsumed = true
 		m := event.Message()
 		if m == nil {
@@ -181,11 +181,11 @@ func TestTwoPartitionMultipleConsumerWithDiffKey(t *testing.T) {
 		t.Logf("sub 1 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
 		return nil
-	}, mq.Queue("test-xwz")); err != nil {
+	}); err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	if _, err := Subscribe("xwz", func(event mq.Event) error {
+	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
 		sub2HasConsumed = true
 		m := event.Message()
 		if m == nil {
@@ -199,7 +199,7 @@ func TestTwoPartitionMultipleConsumerWithDiffKey(t *testing.T) {
 		t.Logf("sub 2 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
 		return nil
-	}, mq.Queue("test-xwz")); err != nil {
+	}); err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
