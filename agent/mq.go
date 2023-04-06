@@ -54,7 +54,7 @@ func Subscribe(group string, handlers map[string]Handler) error {
 }
 
 // Handler
-type Handler func([]byte) error
+type Handler func([]byte, map[string]string) error
 
 // serviceImpl
 type serviceImpl struct {
@@ -67,7 +67,7 @@ func (impl *serviceImpl) unsubscribe() {
 		if err := s[i].Unsubscribe(); err != nil {
 			logrus.Errorf(
 				"failed to unsubscribe to topic:%s, err:%v",
-				s[i].Topic, err,
+				s[i].Topic(), err,
 			)
 		}
 	}
@@ -101,6 +101,6 @@ func (impl *serviceImpl) registerHandler(topic, group string, h Handler) (mq.Sub
 			return nil
 		}
 
-		return h(msg.Body)
+		return h(msg.Body, msg.Header)
 	})
 }
