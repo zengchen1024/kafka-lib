@@ -29,6 +29,8 @@ func Init(redis Redis) {
 func Exit() {
 	if instance != nil {
 		instance.exit()
+
+		instance = nil
 	}
 }
 

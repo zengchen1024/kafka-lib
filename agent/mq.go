@@ -38,6 +38,8 @@ func Init(cfg *Config, log *logrus.Entry, redis publisher.Redis) error {
 func Exit() {
 	if instance != nil {
 		instance.unsubscribe()
+
+		instance = nil
 	}
 
 	publisher.Exit()

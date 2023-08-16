@@ -3,7 +3,7 @@ package publisher
 type Redis interface {
 	RPush(string, interface{}) error
 	LPop(string, interface{}) error
-	IsDocNotExists(error) bool
+	IsKeyNotExists(error) bool
 }
 
 // queueImpl
@@ -22,5 +22,5 @@ func (impl *queueImpl) pop(name string) (v message, err error) {
 }
 
 func (impl *queueImpl) isEmpty(err error) bool {
-	return impl.redis.IsDocNotExists(err)
+	return impl.redis.IsKeyNotExists(err)
 }
