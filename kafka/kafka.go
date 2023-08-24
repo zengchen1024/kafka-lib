@@ -9,7 +9,6 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 
 	"github.com/opensourceways/kafka-lib/mq"
 )
@@ -230,7 +229,7 @@ func NewMQ(opts ...mq.Option) mq.MQ {
 	}
 
 	if options.Log == nil {
-		options.Log = logrus.New().WithField("function", "kafka mq")
+		options.Log = mq.NewLogger()
 	}
 
 	return &kfkMQ{

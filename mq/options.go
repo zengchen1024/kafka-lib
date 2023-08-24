@@ -3,9 +3,15 @@ package mq
 import (
 	"context"
 	"crypto/tls"
-
-	"github.com/sirupsen/logrus"
 )
+
+type Logger interface {
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
+	Errorf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+}
 
 type Options struct {
 	Addresses []string
@@ -21,7 +27,7 @@ type Options struct {
 	// can be stored in a context
 	Context context.Context
 
-	Log *logrus.Entry
+	Log Logger
 }
 
 type Option func(*Options)
@@ -77,9 +83,11 @@ func ContextWithValue(k, v interface{}) Option {
 	}
 }
 
-func Log(log *logrus.Entry) Option {
+func Log(log Logger) Option {
 	return func(o *Options) {
-		o.Log = log
+		if log != nil {
+			o.Log = log
+		}
 	}
 }
 

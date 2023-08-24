@@ -7,7 +7,6 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/opensourceways/server-common-lib/utils"
-	"github.com/sirupsen/logrus"
 
 	"github.com/opensourceways/kafka-lib/mq"
 )
@@ -204,8 +203,7 @@ func (s *subscriber) start() error {
 func (s *subscriber) notifyReady() {
 	select {
 	case <-s.ready:
-		logrus.Info("ready is closed")
-
+		s.gc.kOpts.Log.Info("ready is closed")
 	default:
 		close(s.ready)
 	}

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/opensourceways/kafka-lib/kafka"
 	"github.com/opensourceways/kafka-lib/mq"
 )
@@ -14,10 +12,11 @@ const queueName = "kafka"
 
 var instance *publisherImpl
 
-func Init(redis Redis) {
-	if redis != nil {
+func Init(redis Redis, log mq.Logger) {
+	if redis != nil && log != nil {
 		instance = &publisherImpl{
 			q:       &queueImpl{redis},
+			logger:  log,
 			stop:    make(chan struct{}),
 			stopped: make(chan struct{}),
 		}
@@ -57,6 +56,7 @@ type queue interface {
 // publisherImpl
 type publisherImpl struct {
 	q       queue
+	logger  mq.Logger
 	stop    chan struct{}
 	stopped chan struct{}
 }
@@ -100,7 +100,7 @@ func (impl *publisherImpl) watch() {
 
 		if msg, err := impl.q.pop(queueName); err != nil {
 			if !impl.q.isEmpty(err) {
-				logrus.Error("failed to pop message, err: %s", err.Error())
+				impl.logger.Error("failed to pop message, err: %s", err.Error())
 
 				interval = tenMillisecond
 			}
@@ -108,7 +108,7 @@ func (impl *publisherImpl) watch() {
 			interval = tenMillisecond
 
 			if err := impl.publish(msg.Topic, &msg.Msg); err != nil {
-				logrus.Error("faield to publish message, err:%s", err.Error())
+				impl.logger.Error("faield to publish message, err:%s", err.Error())
 			}
 		}
 

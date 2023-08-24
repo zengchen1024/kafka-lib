@@ -3,8 +3,6 @@ package agent
 import (
 	"errors"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/opensourceways/kafka-lib/agent/publisher"
 	"github.com/opensourceways/kafka-lib/kafka"
 	"github.com/opensourceways/kafka-lib/mq"
@@ -13,9 +11,14 @@ import (
 var (
 	instance *serviceImpl
 	Publish  = publisher.Publish
+	logger   mq.Logger
 )
 
-func Init(cfg *Config, log *logrus.Entry, redis publisher.Redis) error {
+func Init(cfg *Config, log mq.Logger, redis publisher.Redis) error {
+	if log == nil {
+		return errors.New("missing log")
+	}
+
 	err := kafka.Init(
 		mq.Addresses(cfg.mqConfig().Addresses...),
 		mq.Log(log),
@@ -28,9 +31,10 @@ func Init(cfg *Config, log *logrus.Entry, redis publisher.Redis) error {
 		return err
 	}
 
-	publisher.Init(redis)
+	publisher.Init(redis, log)
 
 	instance = &serviceImpl{}
+	logger = log
 
 	return nil
 }
@@ -45,7 +49,7 @@ func Exit() {
 	publisher.Exit()
 
 	if err := kafka.Disconnect(); err != nil {
-		logrus.Errorf("exit kafka, err:%v", err)
+		logger.Errorf("exit kafka, err:%v", err)
 	}
 }
 
@@ -73,7 +77,7 @@ func (impl *serviceImpl) unsubscribe() {
 	s := impl.subscribers
 	for i := range s {
 		if err := s[i].Unsubscribe(); err != nil {
-			logrus.Errorf(
+			logger.Errorf(
 				"failed to unsubscribe to topic:%v, err:%v",
 				s[i].Topics(), err,
 			)
