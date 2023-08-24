@@ -3,29 +3,29 @@ package kafka
 import "github.com/opensourceways/kafka-lib/mq"
 
 var (
-	DefaultMQ = NewMQ()
+	defaultMQ = NewMQ()
 )
 
 func Init(opts ...mq.Option) error {
-	return DefaultMQ.Init(opts...)
+	return defaultMQ.Init(opts...)
 }
 
 func Connect() error {
-	return DefaultMQ.Connect()
+	return defaultMQ.Connect()
 }
 
 func Disconnect() error {
-	return DefaultMQ.Disconnect()
+	return defaultMQ.Disconnect()
 }
 
 func Publish(topic string, msg *mq.Message, opts ...mq.PublishOption) error {
-	return DefaultMQ.Publish(topic, msg, opts...)
+	return defaultMQ.Publish(topic, msg, opts...)
 }
 
-func Subscribe(topic, name string, handler mq.Handler) (mq.Subscriber, error) {
-	return DefaultMQ.Subscribe(topic, name, handler)
+func Subscribe(group string, handler mq.Handler, topics []string) (mq.Subscriber, error) {
+	return defaultMQ.Subscribe(group, handler, topics)
 }
 
 func String() string {
-	return DefaultMQ.String()
+	return defaultMQ.String()
 }

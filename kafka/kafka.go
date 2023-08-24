@@ -137,12 +137,12 @@ func (kMQ *kfkMQ) Publish(topic string, msg *mq.Message, opts ...mq.PublishOptio
 }
 
 // Subscribe name is that of consumer group
-func (kMQ *kfkMQ) Subscribe(topic, name string, h mq.Handler) (mq.Subscriber, error) {
-	return kMQ.subscribe(topic, h, mq.Queue(name))
+func (kMQ *kfkMQ) Subscribe(group string, h mq.Handler, topics []string) (mq.Subscriber, error) {
+	return kMQ.subscribe(topics, h, mq.Queue(group))
 }
 
 // Subscribe to kafka message topic, each subscription generates a kafka groupConsumer group.
-func (kMQ *kfkMQ) subscribe(topic string, h mq.Handler, opts ...mq.SubscribeOption) (mq.Subscriber, error) {
+func (kMQ *kfkMQ) subscribe(topics []string, h mq.Handler, opts ...mq.SubscribeOption) (mq.Subscriber, error) {
 	opt := mq.SubscribeOptions{
 		AutoAck: true,
 		Queue:   uuid.New().String(),
@@ -172,7 +172,7 @@ func (kMQ *kfkMQ) subscribe(topic string, h mq.Handler, opts ...mq.SubscribeOpti
 		kOpts:   kMQ.opts,
 	}
 
-	s := newSubscriber(topic, c, g, gc)
+	s := newSubscriber(topics, c, g, gc)
 
 	if err := s.start(); err != nil {
 		g.Close()

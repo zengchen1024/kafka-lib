@@ -105,8 +105,8 @@ type subscriber struct {
 	cli sarama.Client
 	cg  sarama.ConsumerGroup
 
-	t  string
-	gc groupConsumer
+	topics []string
+	gc     groupConsumer
 
 	once  sync.Once
 	ready chan struct{}
@@ -116,16 +116,16 @@ type subscriber struct {
 }
 
 func newSubscriber(
-	topic string,
+	topics []string,
 	cli sarama.Client, cg sarama.ConsumerGroup,
 	gc groupConsumer,
 
 ) (s *subscriber) {
 	s = &subscriber{
-		t:   topic,
-		cli: cli,
-		cg:  cg,
-		gc:  gc,
+		topics: topics,
+		cli:    cli,
+		cg:     cg,
+		gc:     gc,
 
 		ready: make(chan struct{}),
 		done:  make(chan struct{}),
@@ -140,8 +140,8 @@ func (s *subscriber) Options() mq.SubscribeOptions {
 	return s.gc.subOpts
 }
 
-func (s *subscriber) Topic() string {
-	return s.t
+func (s *subscriber) Topics() []string {
+	return s.topics
 }
 
 func (s *subscriber) Unsubscribe() error {
@@ -166,10 +166,9 @@ func (s *subscriber) start() error {
 		defer close(s.done)
 
 		log := s.gc.kOpts.Log
-		topic := []string{s.t}
 
 		for {
-			if err := s.cg.Consume(ctx, topic, &s.gc); err != nil {
+			if err := s.cg.Consume(ctx, s.topics, &s.gc); err != nil {
 				log.Errorf("Consume err: %s", err.Error())
 
 				return

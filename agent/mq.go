@@ -49,12 +49,16 @@ func Exit() {
 	}
 }
 
-func Subscribe(group string, handlers map[string]Handler) error {
+func Subscribe(group string, h Handler, topics []string) error {
 	if instance == nil {
 		return errors.New("unimplemented")
 	}
 
-	return instance.subscribe(group, handlers)
+	if group == "" || h == nil || len(topics) == 0 {
+		return errors.New("missing parameters")
+	}
+
+	return instance.subscribe(group, h, topics)
 }
 
 // Handler
@@ -70,41 +74,33 @@ func (impl *serviceImpl) unsubscribe() {
 	for i := range s {
 		if err := s[i].Unsubscribe(); err != nil {
 			logrus.Errorf(
-				"failed to unsubscribe to topic:%s, err:%v",
-				s[i].Topic(), err,
+				"failed to unsubscribe to topic:%v, err:%v",
+				s[i].Topics(), err,
 			)
 		}
 	}
 }
 
-func (impl *serviceImpl) subscribe(group string, handlers map[string]Handler) error {
-	for topic, h := range handlers {
-		s, err := impl.registerHandler(topic, group, h)
-		if err != nil {
-			return err
-		}
-
-		if s != nil {
-			impl.subscribers = append(impl.subscribers, s)
-		} else {
-			logrus.Infof("does not subscribe topic:%s", topic)
-		}
+func (impl *serviceImpl) subscribe(group string, h Handler, topics []string) error {
+	s, err := impl.registerHandler(group, h, topics)
+	if err == nil {
+		impl.subscribers = append(impl.subscribers, s)
 	}
 
-	return nil
+	return err
 }
 
-func (impl *serviceImpl) registerHandler(topic, group string, h Handler) (mq.Subscriber, error) {
-	if h == nil {
-		return nil, nil
-	}
+func (impl *serviceImpl) registerHandler(group string, h Handler, topics []string) (mq.Subscriber, error) {
+	return kafka.Subscribe(
+		group,
+		func(e mq.Event) error {
+			msg := e.Message()
+			if msg == nil {
+				return nil
+			}
 
-	return kafka.Subscribe(topic, group, func(e mq.Event) error {
-		msg := e.Message()
-		if msg == nil {
-			return nil
-		}
-
-		return h(msg.Body, msg.Header)
-	})
+			return h(msg.Body, msg.Header)
+		},
+		topics,
+	)
 }
