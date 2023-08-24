@@ -110,7 +110,6 @@ type subscriber struct {
 
 	once  sync.Once
 	ready chan struct{}
-	stop  chan struct{}
 	done  chan struct{}
 
 	cancel context.CancelFunc
@@ -129,7 +128,6 @@ func newSubscriber(
 		gc:  gc,
 
 		ready: make(chan struct{}),
-		stop:  make(chan struct{}),
 		done:  make(chan struct{}),
 	}
 
@@ -206,7 +204,7 @@ func (s *subscriber) start() error {
 
 func (s *subscriber) notifyReady() {
 	select {
-	case _, _ = <-s.ready:
+	case <-s.ready:
 		logrus.Info("ready is closed")
 
 	default:
