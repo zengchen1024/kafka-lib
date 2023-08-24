@@ -21,7 +21,7 @@ type MQ interface {
 	Connect() error
 	Disconnect() error
 	Publish(topic string, m *Message, opts ...PublishOption) error
-	Subscribe(group string, h Handler, topics []string) (Subscriber, error)
+	Subscribe(h Handler, topics []string, opts ...SubscribeOption) (Subscriber, error)
 	String() string
 }
 

@@ -62,7 +62,44 @@ func Subscribe(group string, h Handler, topics []string) error {
 		return errors.New("missing parameters")
 	}
 
-	return instance.subscribe(group, h, topics)
+	return instance.subscribe(
+		h, topics,
+		mq.Queue(group),
+		mq.SubscribeStrategy(mq.StrategyDoOnce),
+	)
+}
+
+func SubscribeWithRetryStrategy(group string, h Handler, topics []string, retryNum int) error {
+	if instance == nil {
+		return errors.New("unimplemented")
+	}
+
+	if group == "" || h == nil || len(topics) == 0 {
+		return errors.New("missing parameters")
+	}
+
+	return instance.subscribe(
+		h, topics,
+		mq.Queue(group),
+		mq.SubscribeStrategy(mq.StrategyRetry),
+		mq.SubscribeRetryNum(retryNum),
+	)
+}
+
+func SubscribeWithStrategyOfSendingBack(group string, h Handler, topics []string) error {
+	if instance == nil {
+		return errors.New("unimplemented")
+	}
+
+	if group == "" || h == nil || len(topics) == 0 {
+		return errors.New("missing parameters")
+	}
+
+	return instance.subscribe(
+		h, topics,
+		mq.Queue(group),
+		mq.SubscribeStrategy(mq.StrategySendBackIfFailed),
+	)
 }
 
 // Handler
@@ -85,18 +122,8 @@ func (impl *serviceImpl) unsubscribe() {
 	}
 }
 
-func (impl *serviceImpl) subscribe(group string, h Handler, topics []string) error {
-	s, err := impl.registerHandler(group, h, topics)
-	if err == nil {
-		impl.subscribers = append(impl.subscribers, s)
-	}
-
-	return err
-}
-
-func (impl *serviceImpl) registerHandler(group string, h Handler, topics []string) (mq.Subscriber, error) {
-	return kafka.Subscribe(
-		group,
+func (impl *serviceImpl) subscribe(h Handler, topics []string, opts ...mq.SubscribeOption) error {
+	s, err := kafka.Subscribe(
 		func(e mq.Event) error {
 			msg := e.Message()
 			if msg == nil {
@@ -106,5 +133,11 @@ func (impl *serviceImpl) registerHandler(group string, h Handler, topics []strin
 			return h(msg.Body, msg.Header)
 		},
 		topics,
+		opts...,
 	)
+	if err == nil {
+		impl.subscribers = append(impl.subscribers, s)
+	}
+
+	return err
 }

@@ -5,6 +5,28 @@ import (
 	"crypto/tls"
 )
 
+const (
+	StrategyKindRetry            = "retry"
+	StrategyKindDoOnce           = "doOnce"
+	StrategyKindSendBackIfFailed = "send_back"
+)
+
+var (
+	StrategyRetry            = strategyImpl(StrategyKindRetry)
+	StrategyDoOnce           = strategyImpl(StrategyKindDoOnce)
+	StrategySendBackIfFailed = strategyImpl(StrategyKindSendBackIfFailed)
+)
+
+type Strategy interface {
+	Strategy() string
+}
+
+type strategyImpl string
+
+func (impl strategyImpl) Strategy() string {
+	return string(impl)
+}
+
 type Logger interface {
 	Info(args ...interface{})
 	Warn(args ...interface{})
@@ -110,10 +132,17 @@ type SubscribeOptions struct {
 	// AutoAck defaults to true. When a handler returns
 	// with a nil error the message is receipt already.
 	AutoAck bool
+
 	// Subscribers with the same queue name
 	// will create a shared subscription where each
 	// receives a subset of messages.
 	Queue string
+
+	// RetryNum specifies the one that retry when handle failed
+	RetryNum int
+
+	// Strategy specifies the one for handling message
+	Strategy Strategy
 
 	// Other options for implementations of the interface
 	// can be stored in a context
@@ -153,5 +182,19 @@ func Queue(name string) SubscribeOption {
 func SubscribeContext(ctx context.Context) SubscribeOption {
 	return func(o *SubscribeOptions) {
 		o.Context = ctx
+	}
+}
+
+// SubscribeRetryNum sets RetryNum
+func SubscribeRetryNum(v int) SubscribeOption {
+	return func(o *SubscribeOptions) {
+		o.RetryNum = v
+	}
+}
+
+// SubscribeStrategy sets Strategy
+func SubscribeStrategy(v Strategy) SubscribeOption {
+	return func(o *SubscribeOptions) {
+		o.Strategy = v
 	}
 }

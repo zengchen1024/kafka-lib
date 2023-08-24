@@ -11,12 +11,15 @@ import (
 	"github.com/opensourceways/kafka-lib/mq"
 )
 
+type eventHandler interface {
+	handle(*event)
+}
+
 // groupConsumer represents a Sarama consumer group consumer
 type groupConsumer struct {
-	kOpts   mq.Options
-	handler mq.Handler
-	subOpts mq.SubscribeOptions
-
+	mqOpts      *mq.Options
+	subOpts     *mq.SubscribeOptions
+	handler     eventHandler
 	notifyReady func()
 }
 
@@ -34,12 +37,22 @@ func (gc *groupConsumer) Cleanup(sarama.ConsumerGroupSession) error {
 
 // ConsumeClaim must start a groupConsumer loop of ConsumerGroupClaim's Messages().
 func (gc *groupConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	handle := gc.genHanler(session)
+	log := gc.mqOpts.Log
+	unmarshal := gc.mqOpts.Codec.Unmarshal
 
 	for {
 		select {
 		case message := <-claim.Messages():
-			handle(message)
+			msg := new(mq.Message)
+			if err := unmarshal(message.Value, msg); err != nil {
+				log.Errorf("unmarshal msg failed, err: %v", err)
+			} else {
+				gc.handler.handle(&event{
+					m:    msg,
+					km:   message,
+					sess: session,
+				})
+			}
 
 			if gc.subOpts.AutoAck {
 				session.MarkMessage(message, "")
@@ -51,61 +64,15 @@ func (gc *groupConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 	}
 }
 
-func (gc *groupConsumer) genHanler(session sarama.ConsumerGroupSession) func(*sarama.ConsumerMessage) {
-	handler := gc.handler
-	if handler == nil {
-		handler = func(event mq.Event) error {
-			return nil
-		}
-	}
-
-	log := gc.kOpts.Log
-
-	eh := gc.kOpts.ErrorHandler
-	if eh == nil {
-		eh = func(e mq.Event) error {
-			log.Error(e.Error())
-
-			return nil
-		}
-	}
-
-	unmarshal := gc.kOpts.Codec.Unmarshal
-
-	return func(msg *sarama.ConsumerMessage) {
-		ke := &event{
-			km:   msg,
-			m:    new(mq.Message),
-			sess: session,
-		}
-
-		if err := unmarshal(msg.Value, ke.m); err != nil {
-			ke.err = fmt.Errorf("unmarshal msg failed, err: %v", err)
-			ke.m.Body = msg.Value
-
-			if err := eh(ke); err != nil {
-				log.Error(err)
-			}
-
-			return
-		}
-
-		if err := handler(ke); err != nil {
-			ke.err = fmt.Errorf("handle event, err: %v", err)
-
-			if err := eh(ke); err != nil {
-				log.Error(err)
-			}
-		}
-	}
-}
-
+// subscriber
 type subscriber struct {
+	mqOpts  *mq.Options
+	subOpts mq.SubscribeOptions
+
 	cli sarama.Client
 	cg  sarama.ConsumerGroup
 
 	topics []string
-	gc     groupConsumer
 
 	once  sync.Once
 	ready chan struct{}
@@ -116,27 +83,30 @@ type subscriber struct {
 
 func newSubscriber(
 	topics []string,
-	cli sarama.Client, cg sarama.ConsumerGroup,
-	gc groupConsumer,
+	cli sarama.Client,
+	cg sarama.ConsumerGroup,
+	handler eventHandler,
+	mqOpts *mq.Options,
+	subOpts *mq.SubscribeOptions,
+) (*subscriber, error) {
+	s := &subscriber{
+		mqOpts:  mqOpts,
+		subOpts: *subOpts,
 
-) (s *subscriber) {
-	s = &subscriber{
+		cli: cli,
+		cg:  cg,
+
 		topics: topics,
-		cli:    cli,
-		cg:     cg,
-		gc:     gc,
 
 		ready: make(chan struct{}),
 		done:  make(chan struct{}),
 	}
 
-	s.gc.notifyReady = s.notifyReady
-
-	return
+	return s, s.start(handler)
 }
 
 func (s *subscriber) Options() mq.SubscribeOptions {
-	return s.gc.subOpts
+	return s.subOpts
 }
 
 func (s *subscriber) Topics() []string {
@@ -160,14 +130,21 @@ func (s *subscriber) Unsubscribe() error {
 	return mErr.Err()
 }
 
-func (s *subscriber) start() error {
+func (s *subscriber) start(handler eventHandler) error {
 	f := func(ctx context.Context) {
 		defer close(s.done)
 
-		log := s.gc.kOpts.Log
+		log := s.mqOpts.Log
+
+		gc := groupConsumer{
+			mqOpts:      s.mqOpts,
+			subOpts:     &s.subOpts,
+			handler:     handler,
+			notifyReady: s.notifyReady,
+		}
 
 		for {
-			if err := s.cg.Consume(ctx, s.topics, &s.gc); err != nil {
+			if err := s.cg.Consume(ctx, s.topics, &gc); err != nil {
 				log.Errorf("Consume err: %s", err.Error())
 
 				return
@@ -183,7 +160,7 @@ func (s *subscriber) start() error {
 		}
 	}
 
-	ctx, cancel := context.WithCancel(s.gc.subOpts.Context)
+	ctx, cancel := context.WithCancel(s.subOpts.Context)
 
 	go f(ctx)
 
@@ -203,7 +180,7 @@ func (s *subscriber) start() error {
 func (s *subscriber) notifyReady() {
 	select {
 	case <-s.ready:
-		s.gc.kOpts.Log.Info("ready is closed")
+		s.mqOpts.Log.Info("ready is closed")
 	default:
 		close(s.ready)
 	}
