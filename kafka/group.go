@@ -7,6 +7,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/opensourceways/server-common-lib/utils"
+	"github.com/sirupsen/logrus"
 
 	"github.com/opensourceways/kafka-lib/mq"
 )
@@ -169,18 +170,20 @@ func (s *subscriber) start() error {
 		log := s.gc.kOpts.Log
 		topic := []string{s.t}
 
-		// doesn't support re-consuming because of server-side rebalance
-		if err := s.cg.Consume(ctx, topic, &s.gc); err != nil {
-			log.Errorf("Consume err: %s", err.Error())
-			close(s.stop)
+		for {
+			if err := s.cg.Consume(ctx, topic, &s.gc); err != nil {
+				log.Errorf("Consume err: %s", err.Error())
 
-			return
-		}
+				return
+			}
 
-		if err := ctx.Err(); err != nil {
-			log.Infof("exit by unsubscribing, err:%s", err.Error())
-		} else {
-			log.Fatal("maybe, server-side rebalance happens. Restart to fix it!")
+			if err := ctx.Err(); err != nil {
+				log.Infof("exit by unsubscribing, err:%s", err.Error())
+
+				return
+			}
+
+			log.Warn("maybe, server-side rebalance happens. Restart to fix it!")
 		}
 	}
 
@@ -194,7 +197,7 @@ func (s *subscriber) start() error {
 
 		return nil
 
-	case <-s.stop:
+	case <-s.done:
 		cancel()
 
 		return fmt.Errorf("start failed")
@@ -202,5 +205,11 @@ func (s *subscriber) start() error {
 }
 
 func (s *subscriber) notifyReady() {
-	close(s.ready)
+	select {
+	case _, _ = <-s.ready:
+		logrus.Info("ready is closed")
+
+	default:
+		close(s.ready)
+	}
 }
