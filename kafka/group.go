@@ -47,6 +47,8 @@ func (gc *groupConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			if err := unmarshal(message.Value, msg); err != nil {
 				log.Errorf("unmarshal msg failed, err: %v", err)
 			} else {
+				fmt.Printf("message:%s, topic:%s, partition:%d\n", string(msg.Body), message.Topic, message.Partition)
+
 				gc.handler.handle(&event{
 					m:    msg,
 					km:   message,
