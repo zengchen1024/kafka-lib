@@ -6,15 +6,15 @@ import (
 )
 
 const (
-	StrategyKindRetry            = "retry"
-	StrategyKindDoOnce           = "doOnce"
-	StrategyKindSendBackIfFailed = "send_back"
+	StrategyKindRetry    = "retry"
+	StrategyKindDoOnce   = "do_once"
+	StrategyKindSendBack = "send_back"
 )
 
 var (
-	StrategyRetry            = strategyImpl(StrategyKindRetry)
-	StrategyDoOnce           = strategyImpl(StrategyKindDoOnce)
-	StrategySendBackIfFailed = strategyImpl(StrategyKindSendBackIfFailed)
+	StrategyRetry    = strategyImpl(StrategyKindRetry)
+	StrategyDoOnce   = strategyImpl(StrategyKindDoOnce)
+	StrategySendBack = strategyImpl(StrategyKindSendBack)
 )
 
 type Strategy interface {

@@ -20,7 +20,12 @@ func (impl *kfkMQ) genHanler(h mq.Handler, opt *mq.SubscribeOptions) eventHandle
 		}
 	}
 
-	switch opt.Strategy.Strategy() {
+	v := ""
+	if opt.Strategy != nil {
+		v = opt.Strategy.Strategy()
+	}
+
+	switch v {
 	case mq.StrategyKindDoOnce:
 		return &doOnceHandler{
 			handler: h,
@@ -34,8 +39,8 @@ func (impl *kfkMQ) genHanler(h mq.Handler, opt *mq.SubscribeOptions) eventHandle
 			retryNum: opt.RetryNum,
 		}
 
-	case mq.StrategyKindSendBackIfFailed:
-		return &sendBackIfFailedHandler{
+	case mq.StrategyKindSendBack:
+		return &sendBackHandler{
 			handler: h,
 			eh:      eh,
 			log:     log,
@@ -67,15 +72,15 @@ func (h *doOnceHandler) handle(e *event) {
 	}
 }
 
-// sendBackIfFailedHandler
-type sendBackIfFailedHandler struct {
+// sendBackHandler
+type sendBackHandler struct {
 	handler mq.Handler
 	eh      errorHandler
 	log     mq.Logger
 	publish func(topic string, msg *mq.Message, opts ...mq.PublishOption) error
 }
 
-func (h *sendBackIfFailedHandler) handle(e *event) {
+func (h *sendBackHandler) handle(e *event) {
 	if err := h.handler(e); err != nil {
 		e.err = fmt.Errorf("handle event, err: %v", err)
 

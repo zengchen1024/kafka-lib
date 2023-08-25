@@ -9,21 +9,21 @@ func NewLogger() Logger {
 type logImpl struct{}
 
 func (logImpl) Info(args ...interface{}) {
-	fmt.Print(args...)
+	fmt.Println(args...)
 }
 
 func (logImpl) Warn(args ...interface{}) {
-	fmt.Print(args...)
+	fmt.Println(args...)
 }
 
 func (logImpl) Error(args ...interface{}) {
-	fmt.Print(args...)
+	fmt.Println(args...)
 }
 
 func (logImpl) Errorf(format string, args ...interface{}) {
-	fmt.Printf(format, args...)
+	fmt.Printf(format+"\n", args...)
 }
 
 func (logImpl) Infof(format string, args ...interface{}) {
-	fmt.Printf(format, args...)
+	fmt.Printf(format+"\n", args...)
 }

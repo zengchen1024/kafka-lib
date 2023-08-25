@@ -1,4 +1,4 @@
-package publisher
+package agent
 
 type Redis interface {
 	RPush(string, interface{}) error

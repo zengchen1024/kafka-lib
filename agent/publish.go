@@ -1,35 +1,24 @@
-package publisher
+package agent
 
 import (
 	"encoding/json"
 	"time"
 
-	"github.com/opensourceways/kafka-lib/kafka"
 	"github.com/opensourceways/kafka-lib/mq"
 )
 
 const queueName = "kafka"
 
-var instance *publisherImpl
-
-func Init(redis Redis, log mq.Logger) {
+func newPublisher(redis Redis, log mq.Logger) {
 	if redis != nil && log != nil {
-		instance = &publisherImpl{
+		publisher = &publisherImpl{
 			q:       &queueImpl{redis},
 			logger:  log,
 			stop:    make(chan struct{}),
 			stopped: make(chan struct{}),
 		}
 
-		instance.start()
-	}
-}
-
-func Exit() {
-	if instance != nil {
-		instance.exit()
-
-		instance = nil
+		publisher.start()
 	}
 }
 
@@ -39,11 +28,11 @@ func Publish(topic string, header map[string]string, msg []byte) error {
 		Body:   msg,
 	}
 
-	if instance != nil {
-		return instance.publish(topic, v)
+	if publisher != nil {
+		return publisher.publish(topic, v)
 	}
 
-	return kafka.Publish(topic, v)
+	return mqInstance.Publish(topic, v)
 }
 
 // queue
@@ -62,7 +51,7 @@ type publisherImpl struct {
 }
 
 func (impl *publisherImpl) publish(topic string, msg *mq.Message) error {
-	if err := kafka.Publish(topic, msg); err == nil {
+	if err := mqInstance.Publish(topic, msg); err == nil {
 		return nil
 	}
 
