@@ -3,14 +3,19 @@ package agent
 import (
 	"errors"
 
+	"github.com/sirupsen/logrus"
+
+	"github.com/opensourceways/kafka-lib/agent/publisher"
 	"github.com/opensourceways/kafka-lib/kafka"
 	"github.com/opensourceways/kafka-lib/mq"
-	"github.com/sirupsen/logrus"
 )
 
-var instance *serviceImpl
+var (
+	instance *serviceImpl
+	Publish  = publisher.Publish
+)
 
-func Init(cfg *Config, log *logrus.Entry) error {
+func Init(cfg *Config, log *logrus.Entry, redis publisher.Redis) error {
 	err := kafka.Init(
 		mq.Addresses(cfg.mqConfig().Addresses...),
 		mq.Log(log),
@@ -23,6 +28,8 @@ func Init(cfg *Config, log *logrus.Entry) error {
 		return err
 	}
 
+	publisher.Init(redis)
+
 	instance = &serviceImpl{}
 
 	return nil
@@ -31,18 +38,15 @@ func Init(cfg *Config, log *logrus.Entry) error {
 func Exit() {
 	if instance != nil {
 		instance.unsubscribe()
+
+		instance = nil
 	}
+
+	publisher.Exit()
 
 	if err := kafka.Disconnect(); err != nil {
 		logrus.Errorf("exit kafka, err:%v", err)
 	}
-}
-
-func Publish(topic string, header map[string]string, msg []byte) error {
-	return kafka.Publish(topic, &mq.Message{
-		Header: header,
-		Body:   msg,
-	})
 }
 
 func Subscribe(group string, handlers map[string]Handler) error {
