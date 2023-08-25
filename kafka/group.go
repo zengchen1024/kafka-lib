@@ -66,6 +66,26 @@ func (gc *groupConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 	}
 }
 
+// newSubscriber
+func newSubscriber(
+	topics []string,
+	cli sarama.Client, cg sarama.ConsumerGroup,
+	mqOpts *mq.Options, subOpts *mq.SubscribeOptions,
+) *subscriber {
+	return &subscriber{
+		mqOpts:  mqOpts,
+		subOpts: *subOpts,
+
+		cli: cli,
+		cg:  cg,
+
+		topics: topics,
+
+		ready: make(chan struct{}),
+		done:  make(chan struct{}),
+	}
+}
+
 // subscriber
 type subscriber struct {
 	mqOpts  *mq.Options
@@ -81,30 +101,6 @@ type subscriber struct {
 	done  chan struct{}
 
 	cancel context.CancelFunc
-}
-
-func newSubscriber(
-	topics []string,
-	cli sarama.Client,
-	cg sarama.ConsumerGroup,
-	handler eventHandler,
-	mqOpts *mq.Options,
-	subOpts *mq.SubscribeOptions,
-) (*subscriber, error) {
-	s := &subscriber{
-		mqOpts:  mqOpts,
-		subOpts: *subOpts,
-
-		cli: cli,
-		cg:  cg,
-
-		topics: topics,
-
-		ready: make(chan struct{}),
-		done:  make(chan struct{}),
-	}
-
-	return s, s.start(handler)
 }
 
 func (s *subscriber) Options() mq.SubscribeOptions {
@@ -158,7 +154,7 @@ func (s *subscriber) start(handler eventHandler) error {
 				return
 			}
 
-			log.Warn("maybe, server-side rebalance happens. Restart to fix it!")
+			log.Warn("maybe, server-side rebalance happened.")
 		}
 	}
 

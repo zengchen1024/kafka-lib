@@ -156,8 +156,9 @@ func (impl *kfkMQ) Subscribe(h mq.Handler, topics []string, opts ...mq.Subscribe
 		return nil, err
 	}
 
-	s, err := newSubscriber(topics, c, g, impl.genHanler(h, &opt), &impl.opts, &opt)
-	if err != nil {
+	s := newSubscriber(topics, c, g, &impl.opts, &opt)
+
+	if err = s.start(impl.genHanler(h, &opt)); err != nil {
 		g.Close()
 		c.Close()
 	}

@@ -88,7 +88,7 @@ func (h *sendBackHandler) handle(e *event) {
 
 		// publish again
 		if err := h.publish(e.Topic(), e.m); err != nil {
-			h.log.Error(err)
+			h.log.Errorf("publish again failed, err:%s", err.Error())
 		}
 	}
 }

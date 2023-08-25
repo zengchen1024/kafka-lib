@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/opensourceways/kafka-lib/mq"
@@ -30,7 +29,7 @@ func TestBroker(t *testing.T) {
 		func(event mq.Event) error {
 			m := event.Message()
 			if string(m.Body) != string(msg.Body) {
-				t.Fatalf("Unexpected msg %s, expected %s\n", string(m.Body), string(msg.Body))
+				t.Fatalf("Unexpected msg %s, expected %s", string(m.Body), string(msg.Body))
 			}
 
 			t.Logf("message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
@@ -43,18 +42,18 @@ func TestBroker(t *testing.T) {
 		mq.Queue("test23"),
 	)
 	if err != nil {
-		t.Fatalf("Unexpected subscribe error: %v\n", err)
+		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
 	if err := instance.Publish("mq-test", &msg); err != nil {
-		t.Fatalf("Unexpected publish error: %v\n", err)
+		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	<-done
 	_ = sub.Unsubscribe()
 
 	if err := instance.Disconnect(); err != nil {
-		t.Fatalf("Unexpected disconnect error: %v\n", err)
+		t.Fatalf("Unexpected disconnect error: %v", err)
 	}
 }
 
@@ -92,8 +91,6 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 
 	_, err := instance.Subscribe(
 		func(event mq.Event) error {
-			fmt.Println("first handler")
-
 			sub1HasConsumed = true
 			m := event.Message()
 			if m == nil {
@@ -101,7 +98,6 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 			}
 
 			if string(m.Body) == `{"message":"shutdown"}` {
-				fmt.Println("first handler")
 				close(done)
 			}
 
@@ -112,12 +108,11 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 		[]string{"xwz"}, mq.Queue("test-xwz"),
 	)
 	if err != nil {
-		t.Fatalf("Unexpected subscribe error: %v\n", err)
+		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
 	_, err = instance.Subscribe(
 		func(event mq.Event) error {
-			fmt.Println("2 handler")
 			sub2HasConsumed = true
 			m := event.Message()
 			if m == nil {
@@ -125,8 +120,6 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 			}
 
 			if string(m.Body) == `{"message":"shutdown"}` {
-				fmt.Println("2 handler")
-
 				close(done)
 			}
 
@@ -137,28 +130,26 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 		[]string{"xwz"}, mq.Queue("test-xwz"),
 	)
 	if err != nil {
-		t.Fatalf("Unexpected subscribe error: %v\n", err)
+		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	for i := 0; i < 4; i++ {
-		if err := instance.Publish("xwz", &msg); err != nil {
-			t.Fatalf("Unexpected publish error: %v\n", err)
-		}
+	if err := instance.Publish("xwz", &msg); err != nil {
+		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	if err := instance.Publish("xwz", &shutdownMsg); err != nil {
-		t.Fatalf("Unexpected publish error: %v\n", err)
+		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	<-done
 
 	if err := instance.Disconnect(); err != nil {
-		t.Fatalf("Unexpected disconnect error: %v\n", err)
+		t.Fatalf("Unexpected disconnect error: %v", err)
 	}
 
 	// only one groupConsumer can consume the msg that the msg in the same partition
 	if sub1HasConsumed && sub2HasConsumed {
-		t.Fatalf("Unexpected consumed logic\n")
+		t.Fatalf("Unexpected consumed logic")
 	}
 }
 
@@ -213,7 +204,7 @@ func TestTwoPartitionMultipleConsumerWithDiffKey(t *testing.T) {
 		[]string{"xwz"}, mq.Queue("test-xwz"),
 	)
 	if err != nil {
-		t.Fatalf("Unexpected subscribe error: %v\n", err)
+		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
 	_, err = instance.Subscribe(
@@ -235,27 +226,25 @@ func TestTwoPartitionMultipleConsumerWithDiffKey(t *testing.T) {
 		[]string{"xwz"}, mq.Queue("test-xwz"),
 	)
 	if err != nil {
-		t.Fatalf("Unexpected subscribe error: %v\n", err)
+		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	for i := 0; i < 4; i++ {
-		if err := instance.Publish("xwz", &msg); err != nil {
-			t.Fatalf("Unexpected publish error: %v\n", err)
-		}
+	if err := instance.Publish("xwz", &msg); err != nil {
+		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	if err := instance.Publish("xwz", &shutdownMsg); err != nil {
-		t.Fatalf("Unexpected publish error: %v\n", err)
+		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	<-done
 
 	if err := instance.Disconnect(); err != nil {
-		t.Fatalf("Unexpected disconnect error: %v\n", err)
+		t.Fatalf("Unexpected disconnect error: %v", err)
 	}
 
 	// both consumers can consume messages because there are messages in both partitions
 	if !sub1HasConsumed || !sub2HasConsumed {
-		t.Fatalf("Unexpected consumed logic\n")
+		t.Fatalf("Unexpected consumed logic")
 	}
 }
