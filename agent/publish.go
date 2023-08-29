@@ -1,36 +1,24 @@
-package publisher
+package agent
 
 import (
 	"encoding/json"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
-	"github.com/opensourceways/kafka-lib/kafka"
 	"github.com/opensourceways/kafka-lib/mq"
 )
 
 const queueName = "kafka"
 
-var instance *publisherImpl
-
-func Init(redis Redis) {
-	if redis != nil {
-		instance = &publisherImpl{
+func newPublisher(redis Redis, log mq.Logger) {
+	if redis != nil && log != nil {
+		publisher = &publisherImpl{
 			q:       &queueImpl{redis},
+			logger:  log,
 			stop:    make(chan struct{}),
 			stopped: make(chan struct{}),
 		}
 
-		instance.start()
-	}
-}
-
-func Exit() {
-	if instance != nil {
-		instance.exit()
-
-		instance = nil
+		publisher.start()
 	}
 }
 
@@ -40,11 +28,11 @@ func Publish(topic string, header map[string]string, msg []byte) error {
 		Body:   msg,
 	}
 
-	if instance != nil {
-		return instance.publish(topic, v)
+	if publisher != nil {
+		return publisher.publish(topic, v)
 	}
 
-	return kafka.Publish(topic, v)
+	return mqInstance.Publish(topic, v)
 }
 
 // queue
@@ -57,12 +45,13 @@ type queue interface {
 // publisherImpl
 type publisherImpl struct {
 	q       queue
+	logger  mq.Logger
 	stop    chan struct{}
 	stopped chan struct{}
 }
 
 func (impl *publisherImpl) publish(topic string, msg *mq.Message) error {
-	if err := kafka.Publish(topic, msg); err == nil {
+	if err := mqInstance.Publish(topic, msg); err == nil {
 		return nil
 	}
 
@@ -100,7 +89,7 @@ func (impl *publisherImpl) watch() {
 
 		if msg, err := impl.q.pop(queueName); err != nil {
 			if !impl.q.isEmpty(err) {
-				logrus.Error("failed to pop message, err: %s", err.Error())
+				impl.logger.Error("failed to pop message, err: %s", err.Error())
 
 				interval = tenMillisecond
 			}
@@ -108,7 +97,7 @@ func (impl *publisherImpl) watch() {
 			interval = tenMillisecond
 
 			if err := impl.publish(msg.Topic, &msg.Msg); err != nil {
-				logrus.Error("faield to publish message, err:%s", err.Error())
+				impl.logger.Error("faield to publish message, err:%s", err.Error())
 			}
 		}
 

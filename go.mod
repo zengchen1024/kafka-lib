@@ -6,7 +6,6 @@ require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/google/uuid v1.3.0
 	github.com/opensourceways/server-common-lib v0.0.0-20230208064916-61fc43dfb8db
-	github.com/sirupsen/logrus v1.9.0
 )
 
 require (
@@ -30,7 +29,6 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )

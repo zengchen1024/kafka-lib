@@ -3,9 +3,37 @@ package mq
 import (
 	"context"
 	"crypto/tls"
-
-	"github.com/sirupsen/logrus"
 )
+
+const (
+	StrategyKindRetry    = "retry"
+	StrategyKindDoOnce   = "do_once"
+	StrategyKindSendBack = "send_back"
+)
+
+var (
+	StrategyRetry    = strategyImpl(StrategyKindRetry)
+	StrategyDoOnce   = strategyImpl(StrategyKindDoOnce)
+	StrategySendBack = strategyImpl(StrategyKindSendBack)
+)
+
+type Strategy interface {
+	Strategy() string
+}
+
+type strategyImpl string
+
+func (impl strategyImpl) Strategy() string {
+	return string(impl)
+}
+
+type Logger interface {
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
+	Errorf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+}
 
 type Options struct {
 	Addresses []string
@@ -21,7 +49,7 @@ type Options struct {
 	// can be stored in a context
 	Context context.Context
 
-	Log *logrus.Entry
+	Log Logger
 }
 
 type Option func(*Options)
@@ -77,9 +105,11 @@ func ContextWithValue(k, v interface{}) Option {
 	}
 }
 
-func Log(log *logrus.Entry) Option {
+func Log(log Logger) Option {
 	return func(o *Options) {
-		o.Log = log
+		if log != nil {
+			o.Log = log
+		}
 	}
 }
 
@@ -102,10 +132,17 @@ type SubscribeOptions struct {
 	// AutoAck defaults to true. When a handler returns
 	// with a nil error the message is receipt already.
 	AutoAck bool
+
 	// Subscribers with the same queue name
 	// will create a shared subscription where each
 	// receives a subset of messages.
 	Queue string
+
+	// RetryNum specifies the one that retry when handle failed
+	RetryNum int
+
+	// Strategy specifies the one for handling message
+	Strategy Strategy
 
 	// Other options for implementations of the interface
 	// can be stored in a context
@@ -145,5 +182,19 @@ func Queue(name string) SubscribeOption {
 func SubscribeContext(ctx context.Context) SubscribeOption {
 	return func(o *SubscribeOptions) {
 		o.Context = ctx
+	}
+}
+
+// SubscribeRetryNum sets RetryNum
+func SubscribeRetryNum(v int) SubscribeOption {
+	return func(o *SubscribeOptions) {
+		o.RetryNum = v
+	}
+}
+
+// SubscribeStrategy sets Strategy
+func SubscribeStrategy(v Strategy) SubscribeOption {
+	return func(o *SubscribeOptions) {
+		o.Strategy = v
 	}
 }

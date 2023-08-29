@@ -21,7 +21,7 @@ type MQ interface {
 	Connect() error
 	Disconnect() error
 	Publish(topic string, m *Message, opts ...PublishOption) error
-	Subscribe(topic, name string, h Handler) (Subscriber, error)
+	Subscribe(h Handler, topics []string, opts ...SubscribeOption) (Subscriber, error)
 	String() string
 }
 
@@ -42,7 +42,7 @@ type Event interface {
 // Subscriber is a convenience return type for the Subscribe method.
 type Subscriber interface {
 	Options() SubscribeOptions
-	Topic() string
+	Topics() []string
 	Unsubscribe() error
 }
 

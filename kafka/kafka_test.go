@@ -7,11 +7,13 @@ import (
 )
 
 func TestBroker(t *testing.T) {
-	if err := Init(); err != nil {
+	instance := NewMQ()
+
+	if err := instance.Init(); err != nil {
 		t.Fatalf("mq init error: %v", err)
 	}
 
-	if err := Connect(); err != nil {
+	if err := instance.Connect(); err != nil {
 		t.Fatalf("mq connect error: %v", err)
 	}
 
@@ -23,42 +25,48 @@ func TestBroker(t *testing.T) {
 	}
 	done := make(chan bool)
 
-	sub, err := Subscribe("mq-test", "test23", func(event mq.Event) error {
-		m := event.Message()
-		if string(m.Body) != string(msg.Body) {
-			t.Fatalf("Unexpected msg %s, expected %s", string(m.Body), string(msg.Body))
-		}
+	sub, err := instance.Subscribe(
+		func(event mq.Event) error {
+			m := event.Message()
+			if string(m.Body) != string(msg.Body) {
+				t.Fatalf("Unexpected msg %s, expected %s", string(m.Body), string(msg.Body))
+			}
 
-		t.Logf("message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
+			t.Logf("message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
-		close(done)
+			close(done)
 
-		return nil
-	})
+			return nil
+		},
+		[]string{"mq-test"},
+		mq.Queue("test23"),
+	)
 	if err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	if err := Publish("mq-test", &msg); err != nil {
+	if err := instance.Publish("mq-test", &msg); err != nil {
 		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	<-done
 	_ = sub.Unsubscribe()
 
-	if err := Disconnect(); err != nil {
+	if err := instance.Disconnect(); err != nil {
 		t.Fatalf("Unexpected disconnect error: %v", err)
 	}
 }
 
 func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
+	instance := NewMQ()
+
 	// note: the topic of xwz has 2 partitions
 
-	if err := Init(); err != nil {
+	if err := instance.Init(); err != nil {
 		t.Fatalf("mq init error: %v", err)
 	}
 
-	if err := Connect(); err != nil {
+	if err := instance.Connect(); err != nil {
 		t.Fatalf("mq connect error: %v", err)
 	}
 
@@ -81,53 +89,61 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 	done := make(chan bool)
 	sub1HasConsumed, sub2HasConsumed := false, false
 
-	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
-		sub1HasConsumed = true
-		m := event.Message()
-		if m == nil {
-			t.Fatal("msg is nil")
-		}
+	_, err := instance.Subscribe(
+		func(event mq.Event) error {
+			sub1HasConsumed = true
+			m := event.Message()
+			if m == nil {
+				t.Fatal("msg is nil")
+			}
 
-		if string(m.Body) == `{"message":"shutdown"}` {
-			close(done)
-		}
+			if string(m.Body) == `{"message":"shutdown"}` {
+				close(done)
+			}
 
-		t.Logf("sub 1 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
+			t.Logf("sub 1 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
-		return nil
-	}); err != nil {
+			return nil
+		},
+		[]string{"xwz"}, mq.Queue("test-xwz"),
+	)
+	if err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
-		sub2HasConsumed = true
-		m := event.Message()
-		if m == nil {
-			t.Fatal("msg is nil")
-		}
+	_, err = instance.Subscribe(
+		func(event mq.Event) error {
+			sub2HasConsumed = true
+			m := event.Message()
+			if m == nil {
+				t.Fatal("msg is nil")
+			}
 
-		if string(m.Body) == `{"message":"shutdown"}` {
-			close(done)
-		}
+			if string(m.Body) == `{"message":"shutdown"}` {
+				close(done)
+			}
 
-		t.Logf("sub 2 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
+			t.Logf("sub 2 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
-		return nil
-	}); err != nil {
+			return nil
+		},
+		[]string{"xwz"}, mq.Queue("test-xwz"),
+	)
+	if err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	if err := Publish("xwz", &msg); err != nil {
+	if err := instance.Publish("xwz", &msg); err != nil {
 		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
-	if err := Publish("xwz", &shutdownMsg); err != nil {
+	if err := instance.Publish("xwz", &shutdownMsg); err != nil {
 		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	<-done
 
-	if err := Disconnect(); err != nil {
+	if err := instance.Disconnect(); err != nil {
 		t.Fatalf("Unexpected disconnect error: %v", err)
 	}
 
@@ -138,13 +154,15 @@ func TestTwoPartitionMultipleConsumerWithSameKey(t *testing.T) {
 }
 
 func TestTwoPartitionMultipleConsumerWithDiffKey(t *testing.T) {
+	instance := NewMQ()
+
 	//note: the topic of xwz has 2 partitions
 
-	if err := Init(); err != nil {
+	if err := instance.Init(); err != nil {
 		t.Fatalf("mq init error: %v", err)
 	}
 
-	if err := Connect(); err != nil {
+	if err := instance.Connect(); err != nil {
 		t.Fatalf("mq connect error: %v", err)
 	}
 
@@ -167,53 +185,61 @@ func TestTwoPartitionMultipleConsumerWithDiffKey(t *testing.T) {
 	done := make(chan bool)
 	sub1HasConsumed, sub2HasConsumed := false, false
 
-	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
-		sub1HasConsumed = true
-		m := event.Message()
-		if m == nil {
-			t.Fatal("msg is nil")
-		}
+	_, err := instance.Subscribe(
+		func(event mq.Event) error {
+			sub1HasConsumed = true
+			m := event.Message()
+			if m == nil {
+				t.Fatal("msg is nil")
+			}
 
-		if string(m.Body) == `{"message":"shutdown"}` {
-			close(done)
-		}
+			if string(m.Body) == `{"message":"shutdown"}` {
+				close(done)
+			}
 
-		t.Logf("sub 1 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
+			t.Logf("sub 1 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
-		return nil
-	}); err != nil {
+			return nil
+		},
+		[]string{"xwz"}, mq.Queue("test-xwz"),
+	)
+	if err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	if _, err := Subscribe("xwz", "test-xwz", func(event mq.Event) error {
-		sub2HasConsumed = true
-		m := event.Message()
-		if m == nil {
-			t.Fatal("msg is nil")
-		}
+	_, err = instance.Subscribe(
+		func(event mq.Event) error {
+			sub2HasConsumed = true
+			m := event.Message()
+			if m == nil {
+				t.Fatal("msg is nil")
+			}
 
-		if string(m.Body) == `{"message":"shutdown"}` {
-			close(done)
-		}
+			if string(m.Body) == `{"message":"shutdown"}` {
+				close(done)
+			}
 
-		t.Logf("sub 2 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
+			t.Logf("sub 2 get a msg -- > message head: %v , body: %s , extra: %v", m.Header, string(m.Body), event.Extra())
 
-		return nil
-	}); err != nil {
+			return nil
+		},
+		[]string{"xwz"}, mq.Queue("test-xwz"),
+	)
+	if err != nil {
 		t.Fatalf("Unexpected subscribe error: %v", err)
 	}
 
-	if err := Publish("xwz", &msg); err != nil {
+	if err := instance.Publish("xwz", &msg); err != nil {
 		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
-	if err := Publish("xwz", &shutdownMsg); err != nil {
+	if err := instance.Publish("xwz", &shutdownMsg); err != nil {
 		t.Fatalf("Unexpected publish error: %v", err)
 	}
 
 	<-done
 
-	if err := Disconnect(); err != nil {
+	if err := instance.Disconnect(); err != nil {
 		t.Fatalf("Unexpected disconnect error: %v", err)
 	}
 

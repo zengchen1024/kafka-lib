@@ -3,58 +3,111 @@ package agent
 import (
 	"errors"
 
-	"github.com/sirupsen/logrus"
-
-	"github.com/opensourceways/kafka-lib/agent/publisher"
 	"github.com/opensourceways/kafka-lib/kafka"
 	"github.com/opensourceways/kafka-lib/mq"
 )
 
 var (
-	instance *serviceImpl
-	Publish  = publisher.Publish
+	mqInstance mq.MQ
+	subscriber *serviceImpl
+	publisher  *publisherImpl
 )
 
-func Init(cfg *Config, log *logrus.Entry, redis publisher.Redis) error {
-	err := kafka.Init(
+func Init(cfg *Config, log mq.Logger, redis Redis) error {
+	if log == nil {
+		return errors.New("missing log")
+	}
+
+	v := kafka.NewMQ(
 		mq.Addresses(cfg.mqConfig().Addresses...),
 		mq.Log(log),
 	)
-	if err != nil {
+
+	if err := v.Init(); err != nil {
 		return err
 	}
 
-	if err := kafka.Connect(); err != nil {
+	if err := v.Connect(); err != nil {
 		return err
 	}
 
-	publisher.Init(redis)
+	mqInstance = v
+	subscriber = &serviceImpl{logger: log}
 
-	instance = &serviceImpl{}
+	newPublisher(redis, log)
 
 	return nil
 }
 
 func Exit() {
-	if instance != nil {
-		instance.unsubscribe()
+	if subscriber != nil {
+		subscriber.unsubscribe()
 
-		instance = nil
+		subscriber = nil
 	}
 
-	publisher.Exit()
+	if publisher != nil {
+		publisher.exit()
 
-	if err := kafka.Disconnect(); err != nil {
-		logrus.Errorf("exit kafka, err:%v", err)
+		publisher = nil
+	}
+
+	if mqInstance != nil {
+		if err := mqInstance.Disconnect(); err != nil {
+			mqInstance.Options().Log.Errorf("exit kafka, err:%v", err)
+		}
+
+		mqInstance = nil
 	}
 }
 
-func Subscribe(group string, handlers map[string]Handler) error {
-	if instance == nil {
+func Subscribe(group string, h Handler, topics []string) error {
+	if group == "" || h == nil || len(topics) == 0 {
+		return errors.New("missing parameters")
+	}
+
+	if subscriber == nil {
 		return errors.New("unimplemented")
 	}
 
-	return instance.subscribe(group, handlers)
+	return subscriber.subscribe(
+		h, topics,
+		mq.Queue(group),
+		mq.SubscribeStrategy(mq.StrategyDoOnce),
+	)
+}
+
+func SubscribeWithStrategyOfRetry(group string, h Handler, topics []string, retryNum int) error {
+	if group == "" || h == nil || len(topics) == 0 || retryNum == 0 {
+		return errors.New("missing parameters")
+	}
+
+	if subscriber == nil {
+		return errors.New("unimplemented")
+	}
+
+	return subscriber.subscribe(
+		h, topics,
+		mq.Queue(group),
+		mq.SubscribeRetryNum(retryNum),
+		mq.SubscribeStrategy(mq.StrategyRetry),
+	)
+}
+
+func SubscribeWithStrategyOfSendBack(group string, h Handler, topics []string) error {
+	if group == "" || h == nil || len(topics) == 0 {
+		return errors.New("missing parameters")
+	}
+
+	if subscriber == nil {
+		return errors.New("unimplemented")
+	}
+
+	return subscriber.subscribe(
+		h, topics,
+		mq.Queue(group),
+		mq.SubscribeStrategy(mq.StrategySendBack),
+	)
 }
 
 // Handler
@@ -63,48 +116,37 @@ type Handler func([]byte, map[string]string) error
 // serviceImpl
 type serviceImpl struct {
 	subscribers []mq.Subscriber
+	logger      mq.Logger
 }
 
 func (impl *serviceImpl) unsubscribe() {
 	s := impl.subscribers
 	for i := range s {
 		if err := s[i].Unsubscribe(); err != nil {
-			logrus.Errorf(
-				"failed to unsubscribe to topic:%s, err:%v",
-				s[i].Topic(), err,
+			impl.logger.Errorf(
+				"failed to unsubscribe to topic:%v, err:%v",
+				s[i].Topics(), err,
 			)
 		}
 	}
 }
 
-func (impl *serviceImpl) subscribe(group string, handlers map[string]Handler) error {
-	for topic, h := range handlers {
-		s, err := impl.registerHandler(topic, group, h)
-		if err != nil {
-			return err
-		}
+func (impl *serviceImpl) subscribe(h Handler, topics []string, opts ...mq.SubscribeOption) error {
+	s, err := mqInstance.Subscribe(
+		func(e mq.Event) error {
+			msg := e.Message()
+			if msg == nil {
+				return nil
+			}
 
-		if s != nil {
-			impl.subscribers = append(impl.subscribers, s)
-		} else {
-			logrus.Infof("does not subscribe topic:%s", topic)
-		}
+			return h(msg.Body, msg.Header)
+		},
+		topics,
+		opts...,
+	)
+	if err == nil {
+		impl.subscribers = append(impl.subscribers, s)
 	}
 
-	return nil
-}
-
-func (impl *serviceImpl) registerHandler(topic, group string, h Handler) (mq.Subscriber, error) {
-	if h == nil {
-		return nil, nil
-	}
-
-	return kafka.Subscribe(topic, group+topic, func(e mq.Event) error {
-		msg := e.Message()
-		if msg == nil {
-			return nil
-		}
-
-		return h(msg.Body, msg.Header)
-	})
+	return err
 }
