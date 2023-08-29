@@ -13,7 +13,7 @@ var (
 	publisher  *publisherImpl
 )
 
-func Init(cfg *Config, log mq.Logger, redis Redis) error {
+func Init(cfg *Config, log mq.Logger, redis Redis, queueName string) error {
 	if log == nil {
 		return errors.New("missing log")
 	}
@@ -34,7 +34,7 @@ func Init(cfg *Config, log mq.Logger, redis Redis) error {
 	mqInstance = v
 	subscriber = &serviceImpl{logger: log}
 
-	newPublisher(redis, log)
+	newPublisher(redis, log, queueName)
 
 	return nil
 }

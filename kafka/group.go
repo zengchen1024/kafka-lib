@@ -2,10 +2,10 @@ package kafka
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/opensourceways/server-common-lib/utils"
 
 	"github.com/opensourceways/kafka-lib/mq"
@@ -47,8 +47,6 @@ func (gc *groupConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			if err := unmarshal(message.Value, msg); err != nil {
 				log.Errorf("unmarshal msg failed, err: %v", err)
 			} else {
-				fmt.Printf("message:%s, topic:%s, partition:%d\n", string(msg.Body), message.Topic, message.Partition)
-
 				gc.handler.handle(&event{
 					m:    msg,
 					km:   message,
@@ -171,7 +169,7 @@ func (s *subscriber) start(handler eventHandler) error {
 	case <-s.done:
 		cancel()
 
-		return fmt.Errorf("start failed")
+		return errors.New("start failed")
 	}
 }
 

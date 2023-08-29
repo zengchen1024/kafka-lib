@@ -7,12 +7,10 @@ import (
 	"github.com/opensourceways/kafka-lib/mq"
 )
 
-const queueName = "kafka"
-
-func newPublisher(redis Redis, log mq.Logger) {
-	if redis != nil && log != nil {
+func newPublisher(redis Redis, log mq.Logger, queueName string) {
+	if redis != nil && log != nil && queueName != "" {
 		publisher = &publisherImpl{
-			q:       &queueImpl{redis},
+			q:       &queueImpl{redis: redis, queueName: queueName},
 			logger:  log,
 			stop:    make(chan struct{}),
 			stopped: make(chan struct{}),
@@ -37,8 +35,8 @@ func Publish(topic string, header map[string]string, msg []byte) error {
 
 // queue
 type queue interface {
-	push(string, *message) error
-	pop(string) (message, error)
+	push(*message) error
+	pop() (message, error)
 	isEmpty(error) bool
 }
 
@@ -55,7 +53,7 @@ func (impl *publisherImpl) publish(topic string, msg *mq.Message) error {
 		return nil
 	}
 
-	return impl.q.push(queueName, &message{
+	return impl.q.push(&message{
 		Topic: topic,
 		Msg:   *msg,
 	})
@@ -87,7 +85,7 @@ func (impl *publisherImpl) watch() {
 	for {
 		interval := time.Minute
 
-		if msg, err := impl.q.pop(queueName); err != nil {
+		if msg, err := impl.q.pop(); err != nil {
 			if !impl.q.isEmpty(err) {
 				impl.logger.Error("failed to pop message, err: %s", err.Error())
 

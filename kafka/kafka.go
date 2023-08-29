@@ -2,10 +2,10 @@ package kafka
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 
 	"github.com/opensourceways/kafka-lib/mq"
@@ -21,7 +21,7 @@ type kfkMQ struct {
 
 func (impl *kfkMQ) Init(opts ...mq.Option) error {
 	if impl.isConnected() {
-		return fmt.Errorf("mq is connected and can't do init")
+		return errors.New("mq is connected and can't do init")
 	}
 
 	impl.mutex.Lock()

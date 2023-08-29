@@ -8,15 +8,16 @@ type Redis interface {
 
 // queueImpl
 type queueImpl struct {
-	redis Redis
+	redis     Redis
+	queueName string
 }
 
-func (impl *queueImpl) push(name string, v *message) error {
-	return impl.redis.RPush(name, v)
+func (impl *queueImpl) push(v *message) error {
+	return impl.redis.RPush(impl.queueName, v)
 }
 
-func (impl *queueImpl) pop(name string) (v message, err error) {
-	err = impl.redis.LPop(name, &v)
+func (impl *queueImpl) pop() (v message, err error) {
+	err = impl.redis.LPop(impl.queueName, &v)
 
 	return
 }
