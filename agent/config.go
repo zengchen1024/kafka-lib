@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/IBM/sarama"
 	"github.com/opensourceways/kafka-lib/mq"
 )
 
@@ -12,6 +13,7 @@ var reIpPort = regexp.MustCompile(`^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}:[1
 
 type Config struct {
 	Address string `json:"address" required:"true"`
+	Version string `json:"version"` // e.g 2.1.0
 }
 
 func (cfg *Config) Validate() error {
@@ -38,4 +40,14 @@ func (cfg *Config) parseAddress() []string {
 	}
 
 	return r
+}
+
+func (cfg *Config) parseVersion() sarama.KafkaVersion {
+	for _, sv := range sarama.SupportedVersions {
+		if cfg.Version == sv.String() {
+			return sv
+		}
+	}
+
+	return sarama.MaxVersion
 }

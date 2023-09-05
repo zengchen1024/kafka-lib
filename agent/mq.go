@@ -20,6 +20,7 @@ func Init(cfg *Config, log mq.Logger, redis Redis, queueName string) error {
 
 	v := kafka.NewMQ(
 		mq.Addresses(cfg.mqConfig().Addresses...),
+		mq.Version(cfg.parseVersion()),
 		mq.Log(log),
 	)
 

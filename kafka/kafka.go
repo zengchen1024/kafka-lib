@@ -182,9 +182,7 @@ func (impl *kfkMQ) clusterConfig() *sarama.Config {
 		cfg.Net.TLS.Enable = true
 	}
 
-	if !cfg.Version.IsAtLeast(sarama.MaxVersion) {
-		cfg.Version = sarama.MaxVersion
-	}
+	cfg.Version = impl.opts.Version
 
 	// no need to handle error
 	// cfg.Consumer.Return.Errors = true

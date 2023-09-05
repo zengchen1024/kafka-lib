@@ -3,6 +3,8 @@ package mq
 import (
 	"context"
 	"crypto/tls"
+
+	"github.com/IBM/sarama"
 )
 
 const (
@@ -37,6 +39,7 @@ type Logger interface {
 
 type Options struct {
 	Addresses []string
+	Version   sarama.KafkaVersion
 	Secure    bool
 	Codec     Codecer
 
@@ -58,6 +61,13 @@ type Option func(*Options)
 func Addresses(addrs ...string) Option {
 	return func(o *Options) {
 		o.Addresses = addrs
+	}
+}
+
+// Version set the kafka version for sarama
+func Version(version sarama.KafkaVersion) Option {
+	return func(o *Options) {
+		o.Version = version
 	}
 }
 
