@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/IBM/sarama v1.41.0
 	github.com/google/uuid v1.3.0
-	github.com/opensourceways/server-common-lib v0.0.0-20230208064916-61fc43dfb8db
+	github.com/opensourceways/server-common-lib v0.0.0-20231016134644-4bd7efe825a9
 )
 
 require (
