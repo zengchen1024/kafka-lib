@@ -1,10 +1,14 @@
 package agent
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
-
+	"fmt"
 	"github.com/opensourceways/kafka-lib/kafka"
 	"github.com/opensourceways/kafka-lib/mq"
+	"io/ioutil"
+	"os"
 )
 
 var (
@@ -13,16 +17,49 @@ var (
 	publisher  *publisherImpl
 )
 
-func Init(cfg *Config, log mq.Logger, redis Redis, queueName string) error {
+func Init(cfg *Config, log mq.Logger, redis Redis, queueName string, removeCert bool) error {
 	if log == nil {
 		return errors.New("missing log")
 	}
 
-	v := kafka.NewMQ(
-		mq.Addresses(cfg.mqConfig().Addresses...),
-		mq.Version(cfg.parseVersion()),
-		mq.Log(log),
-	)
+	v := mq.MQ(nil)
+
+	if cfg.MQCert != "" {
+		ca, err := ioutil.ReadFile(cfg.MQCert)
+		if err != nil {
+			return err
+		}
+
+		if removeCert {
+			if err := os.Remove(cfg.MQCert); err != nil {
+				return err
+			}
+		}
+
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(ca) {
+			return fmt.Errorf("failed to append certs from PEM")
+		}
+
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true,
+			RootCAs:            pool,
+		}
+
+		v = kafka.NewMQ(
+			mq.Addresses(cfg.mqConfig().Addresses...),
+			mq.Version(cfg.parseVersion()),
+			mq.Log(log),
+			mq.Secure(true),
+			mq.SetTLSConfig(tlsConfig),
+		)
+	} else {
+		v = kafka.NewMQ(
+			mq.Addresses(cfg.mqConfig().Addresses...),
+			mq.Version(cfg.parseVersion()),
+			mq.Log(log),
+		)
+	}
 
 	if err := v.Init(); err != nil {
 		return err

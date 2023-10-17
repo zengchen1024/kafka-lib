@@ -14,6 +14,7 @@ var reIpPort = regexp.MustCompile(`^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}:[1
 type Config struct {
 	Address string `json:"address" required:"true"`
 	Version string `json:"version"` // e.g 2.1.0
+	MQCert  string `json:"mq_cert"`
 }
 
 func (cfg *Config) Validate() error {
