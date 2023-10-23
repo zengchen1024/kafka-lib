@@ -5,10 +5,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/opensourceways/kafka-lib/kafka"
-	"github.com/opensourceways/kafka-lib/mq"
 	"io/ioutil"
 	"os"
+
+	"github.com/opensourceways/kafka-lib/kafka"
+	"github.com/opensourceways/kafka-lib/mq"
 )
 
 var (
@@ -52,6 +53,7 @@ func Init(cfg *Config, log mq.Logger, redis Redis, queueName string, removeCert 
 			mq.Log(log),
 			mq.Secure(true),
 			mq.SetTLSConfig(tlsConfig),
+			mq.Sasl(cfg.Username, cfg.Password, cfg.Algorithm),
 		)
 	} else {
 		v = kafka.NewMQ(
