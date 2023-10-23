@@ -6,6 +6,7 @@ require (
 	github.com/IBM/sarama v1.41.0
 	github.com/google/uuid v1.3.0
 	github.com/opensourceways/server-common-lib v0.0.0-20231016134644-4bd7efe825a9
+	github.com/xdg-go/scram v1.1.2
 )
 
 require (
@@ -27,8 +28,12 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )

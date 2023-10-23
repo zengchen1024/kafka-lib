@@ -42,6 +42,9 @@ type Options struct {
 	Version   sarama.KafkaVersion
 	Secure    bool
 	Codec     Codecer
+	Username  string
+	Password  string
+	Algorithm string
 
 	// Handler executed when error happens in mq message processing
 	ErrorHandler Handler
@@ -61,6 +64,15 @@ type Option func(*Options)
 func Addresses(addrs ...string) Option {
 	return func(o *Options) {
 		o.Addresses = addrs
+	}
+}
+
+// user/password/algorithm are needed by SASL auth
+func Sasl(user, pass, algorithm string) Option {
+	return func(o *Options) {
+		o.Username = user
+		o.Password = pass
+		o.Algorithm = algorithm
 	}
 }
 

@@ -182,6 +182,20 @@ func (impl *kfkMQ) clusterConfig() *sarama.Config {
 		cfg.Net.TLS.Enable = true
 	}
 
+	if impl.opts.Algorithm != "" {
+		cfg.Net.SASL.Enable = true
+		cfg.Net.SASL.User = impl.opts.Username
+		cfg.Net.SASL.Password = impl.opts.Password
+		cfg.Net.SASL.Handshake = true
+		if impl.opts.Algorithm == "sha512" {
+			cfg.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
+			cfg.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
+		} else {
+			cfg.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA256} }
+			cfg.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
+		}
+	}
+
 	cfg.Version = impl.opts.Version
 
 	// no need to handle error

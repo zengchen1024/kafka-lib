@@ -12,14 +12,21 @@ import (
 var reIpPort = regexp.MustCompile(`^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}:[1-9][0-9]*$`)
 
 type Config struct {
-	Address string `json:"address" required:"true"`
-	Version string `json:"version"` // e.g 2.1.0
-	MQCert  string `json:"mq_cert"`
+	Address   string `json:"address" required:"true"`
+	Version   string `json:"version"` // e.g 2.1.0
+	MQCert    string `json:"mq_cert"`
+	Username  string `json:"user_name"`
+	Password  string `json:"password"`
+	Algorithm string `json:"algorithm"`
 }
 
 func (cfg *Config) Validate() error {
 	if r := cfg.parseAddress(); len(r) == 0 {
 		return errors.New("invalid mq address")
+	}
+
+	if cfg.Algorithm != "sha512" && cfg.Algorithm != "sha256" && cfg.Algorithm != "" {
+		return errors.New("invalid mq algorithm")
 	}
 
 	return nil
