@@ -43,7 +43,7 @@ func Init(cfg *Config, log mq.Logger, redis Redis, queueName string, removeCert 
 		}
 
 		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: cfg.SkipCertVerify,
 			RootCAs:            pool,
 		}
 
