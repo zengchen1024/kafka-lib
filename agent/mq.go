@@ -101,6 +101,22 @@ func Exit() {
 	}
 }
 
+func Subscribe1(group string, h NewHandler, topics []string) error {
+	if group == "" || h == nil || len(topics) == 0 {
+		return errors.New("missing parameters")
+	}
+
+	if subscriber == nil {
+		return errors.New("unimplemented")
+	}
+
+	return subscriber.subscribe1(
+		h, topics,
+		mq.Queue(group),
+		mq.SubscribeStrategy(mq.StrategyDoOnce),
+	)
+}
+
 func Subscribe(group string, h Handler, topics []string) error {
 	if group == "" || h == nil || len(topics) == 0 {
 		return errors.New("missing parameters")
@@ -153,6 +169,9 @@ func SubscribeWithStrategyOfSendBack(group string, h Handler, topics []string) e
 // Handler
 type Handler func([]byte, map[string]string) error
 
+// NewHandler
+type NewHandler func(mq.Event) error
+
 // serviceImpl
 type serviceImpl struct {
 	subscribers []mq.Subscriber
@@ -180,6 +199,26 @@ func (impl *serviceImpl) subscribe(h Handler, topics []string, opts ...mq.Subscr
 			}
 
 			return h(msg.Body, msg.Header)
+		},
+		topics,
+		opts...,
+	)
+	if err == nil {
+		impl.subscribers = append(impl.subscribers, s)
+	}
+
+	return err
+}
+
+func (impl *serviceImpl) subscribe1(h NewHandler, topics []string, opts ...mq.SubscribeOption) error {
+	s, err := mqInstance.Subscribe(
+		func(e mq.Event) error {
+			msg := e.Message()
+			if msg == nil {
+				return nil
+			}
+
+			return h(e)
 		},
 		topics,
 		opts...,
